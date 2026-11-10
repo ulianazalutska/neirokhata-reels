@@ -1,0 +1,61 @@
+name: reel
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "create (з поста) або voice (зберегти й переозвучити)"
+        required: true
+        default: create
+      tg:
+        description: "Номер поста Telegram (для create)"
+        required: false
+        default: ""
+      reel:
+        description: "Id рілса (для voice)"
+        required: false
+        default: ""
+      script:
+        description: "Сценарій JSON (для voice)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: repo-write
+  cancel-in-progress: false
+
+jobs:
+  reel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install openai requests beautifulsoup4
+
+      - name: Refresh posts
+        if: inputs.mode == 'create'
+        run: python tools/fetch_posts.py
+
+      - name: Make reel
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          SCRIPT_JSON: ${{ inputs.script }}
+          MODE: ${{ inputs.mode }}
+          TG: ${{ inputs.tg }}
+          REEL: ${{ inputs.reel }}
+        run: |
+          if [ "$MODE" = "create" ]; then python tools/make_reel.py create "$TG"; else python tools/make_reel.py voice "$REEL"; fi
+
+      - name: Commit
+        run: |
+          git add -A reels
+          [ -f posts.json ] && git add posts.json || true
+          if git diff --cached --quiet; then exit 0; fi
+          git -c user.name="github-actions" -c user.email="github-actions@users.noreply.github.com" commit -m "Reel: ${{ inputs.mode }} ${{ inputs.tg }}${{ inputs.reel }}"
+          git pull --rebase && git push
