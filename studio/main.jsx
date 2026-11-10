@@ -5,6 +5,7 @@ import { Player } from '@remotion/player';
 import { Reel, SCENE_IDS, POSE } from '../src/Reel.jsx';
 import { DEFAULT_C, DEFAULT_SET } from '../src/kit.jsx';
 import { TOTAL, FPS, S } from '../src/timeline.js';
+import META from '../src/meta.json';
 
 window.__NH_BASE__ = import.meta.env.BASE_URL;
 
@@ -55,7 +56,9 @@ function Render({ st }) {
       else if (run.status !== 'completed') { setState({ phase: 'running', run }); }
       else if (run.conclusion === 'success') {
         const rel = await gh('/releases/tags/render-' + run.run_number).catch(() => null);
-        setState({ phase: 'done', url: rel?.assets[0]?.browser_download_url, run });
+        const url = rel?.assets[0]?.browser_download_url;
+        setState({ phase: 'done', url, run });
+        if (url) { const f = document.createElement('iframe'); f.style.display = 'none'; f.src = url; document.body.appendChild(f); }
         loadList();
         return;
       } else { setState({ phase: 'failed', run }); return; }
@@ -78,7 +81,7 @@ function Render({ st }) {
     idle: 'Монтаж іде на серверах GitHub з поточними налаштуваннями, приблизно 3–6 хвилин. Сторінку можна не закривати.',
     queued: 'Запускаю монтаж…',
     running: 'Монтую відео… Це займе кілька хвилин.',
-    done: 'Готово!',
+    done: 'Готово! Відео завантажується в папку «Завантаження». Якщо не почалося, натисни «Завантажити mp4».',
     failed: 'Монтаж не вдався. Подивись журнал запуску на GitHub.',
     error: state.msg === 'no-token' ? 'Немає токена GitHub. Додай його в дашборді: вкладка «Налаштування».'
       : state.msg === 'no-access' ? 'Токен не має доступу до репозиторію neirokhata-reels. Додай цей репозиторій у налаштуваннях токена на GitHub (Actions: Read and write, Contents: Read).'
@@ -90,16 +93,39 @@ function Render({ st }) {
       <h2>Монтаж у mp4</h2>
       <div className="row2">
         <button className="btn pri" onClick={start} disabled={busy}>{busy ? 'Монтую…' : 'Змонтувати mp4'}</button>
-        {state.phase === 'done' && state.url && <a className="btn" href={state.url}>Завантажити mp4</a>}
+        {state.phase === 'done' && state.url && <a className="btn" href={state.url} download>Завантажити mp4</a>}
         {(state.phase === 'failed' || state.phase === 'running') && state.run && <a className="btn" href={state.run.html_url} target="_blank" rel="noopener">Журнал на GitHub</a>}
       </div>
       <div className={'note' + (busy ? ' pulse' : '')}>{msg}</div>
       {list.length > 0 && (
         <>
           <div className="sub" style={{ marginTop: 12 }}>Останні відео</div>
-          <ul className="renders">{list.map((x) => <li key={x.url}><span>{x.name}</span><span className="sub">{when(x.at)}</span><a href={x.url}>mp4</a></li>)}</ul>
+          <ul className="renders">{list.map((x) => <li key={x.url}><span>{x.name}</span><span className="sub">{when(x.at)}</span><a href={x.url} download>mp4</a></li>)}</ul>
         </>
       )}
+    </div>
+  );
+}
+
+const CAP_KEY = 'nh_reel_caption';
+function Caption() {
+  const def = META.caption + '\n\n' + META.hashtags;
+  const [text, setText] = useState(() => { try { return localStorage.getItem(CAP_KEY) || def; } catch { return def; } });
+  const [copied, setCopied] = useState(false);
+  const change = (v) => { setText(v); setCopied(false); try { localStorage.setItem(CAP_KEY, v); } catch {} };
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(text); } catch { const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
+    setCopied(true);
+  };
+  return (
+    <div className="card">
+      <h2>Опис для Instagram</h2>
+      <textarea className="cap" value={text} onChange={(e) => change(e.target.value)} rows={12} />
+      <div className="row2" style={{ marginTop: 8 }}>
+        <button className="btn pri" onClick={copy}>{copied ? 'Скопійовано' : 'Копіювати опис'}</button>
+        <button className="btn" onClick={() => change(def)}>Повернути початковий</button>
+        <span className="sub">{text.length} / 2200 символів</span>
+      </div>
     </div>
   );
 }
@@ -167,6 +193,7 @@ function App() {
 
         <div>
           <Render st={st} />
+          <Caption />
           <div className="card">
             <h2>Кольори</h2>
             <div className="grid">

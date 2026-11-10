@@ -44,3 +44,5 @@ a.btn{text-decoration:none;display:inline-block}
 .renders li:last-child{border-bottom:0}
 .renders li span:first-child{flex:1}
 .renders a{color:var(--acc2);font-weight:600}
+.cap{width:100%;font:14px/1.5 "Golos Text",sans-serif;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);resize:vertical}
+.cap:focus{outline:2px solid var(--acc);outline-offset:1px}
