@@ -22,7 +22,7 @@ export const ODD = '6px 30px 6px 30px';
 // Settings from the dashboard studio (inputProps.settings). Defaults = the Нейрохата style.
 // ---------------------------------------------------------------------------
 export const DEFAULT_C = { ...C };
-export const SET = { blobs: 1, sfx: true, sfxVol: 1, voiceVol: 1, captionScale: 1 };
+export const SET = { blobs: 1, sfx: true, sfxVol: 1, voiceVol: 1, captionScale: 1, voiceBase: '' };
 export const DEFAULT_SET = { ...SET };
 export function applySettings(st = {}) {
   Object.assign(C, DEFAULT_C, st.colors || {});
@@ -359,9 +359,16 @@ function voiceActive(frame) {
 }
 const duck = (frame) => (voiceActive(frame) ? 0.65 : 1);
 
+// voiceBase: '' = public/voice; 'static:reelvoice/' = staticFile folder (render); 'https://…/' = remote folder (studio)
+const voiceSrc = (id) => {
+  const b = SET.voiceBase;
+  if (!b) return asset(`voice/${id}.mp3`);
+  if (b.startsWith('static:')) return staticFile(b.slice(7) + id + '.mp3');
+  return b + id + '.mp3';
+};
 export const Voice = () => SCENES.map((s) => (
   <Sequence key={s.id} from={s.from} durationInFrames={s.dur}>
-    <Audio src={asset(`voice/${s.id}.mp3`)} volume={SET.voiceVol} />
+    <Audio src={voiceSrc(s.id)} volume={SET.voiceVol} />
   </Sequence>
 ));
 

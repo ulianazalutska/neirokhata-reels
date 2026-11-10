@@ -46,3 +46,23 @@ a.btn{text-decoration:none;display:inline-block}
 .renders a{color:var(--acc2);font-weight:600}
 .cap{width:100%;font:14px/1.5 "Golos Text",sans-serif;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);resize:vertical}
 .cap:focus{outline:2px solid var(--acc);outline-offset:1px}
+.reels,.posts{list-style:none;margin:0;padding:0;max-height:300px;overflow:auto}
+.reels li{display:flex;gap:10px;align-items:center;padding:9px 10px;border-radius:10px;cursor:pointer;border:1px solid transparent}
+.reels li:hover{background:var(--soft)}
+.reels li.on{border-color:var(--border);background:var(--soft)}
+.reels .pt{flex:1;font-weight:600}
+.posts li{display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+.posts li:last-child{border-bottom:0}
+.posts .pt{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.posts a,.note a{color:var(--acc2)}
+.tag{font-size:12px;background:var(--soft);color:var(--acc2);border-radius:99px;padding:2px 8px;white-space:nowrap}
+.note.bad{background:#FCE9E4;color:var(--acc2)}
+.loading{aspect-ratio:9/16;display:flex;align-items:center;justify-content:center;color:var(--mute)}
+.scene{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px}
+.sh{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.sh b{font:600 14px Onest,sans-serif}
+.sh .sub{flex:1}
+.sh select{font:inherit;padding:4px 6px;border:1px solid var(--line);border-radius:8px;background:#fff}
+label.f textarea,label.f input[type=text]{font:inherit;color:var(--ink);padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;resize:vertical}
+label.f textarea:disabled{background:var(--bg);color:var(--mute)}
+.scene label.f{margin-top:4px}

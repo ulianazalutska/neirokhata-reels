@@ -1,7 +1,7 @@
 // Reel 1: MotionClone — hook → pain → solution → show → bonus → subscribe call to action.
 // To make a new reel: change the lines in voice.py (and re-run it), then rewrite CAPTIONS, POSE, SFX and the scenes.
 import { AbsoluteFill, useCurrentFrame } from 'remotion';
-import { S, wordAt } from './timeline';
+import { S, wordAt, setTimings, DEFAULT_TIMINGS } from './timeline';
 import {
   C, HEAD, BODY, ODD, sp, ease, clamp01, lerp, pressAt, r,
   Background, Caption, w, Avatar, Cursor, Plaque, AppWindow, Button, Toggle, Petals,
@@ -216,7 +216,8 @@ const Channel = ({ frame }) => {
 
 // ---------------------------------------------------------------------------
 export const Reel = ({ settings = {} }) => {
-  applySettings(settings);
+  setTimings(DEFAULT_TIMINGS);
+  applySettings({ ...settings, voiceBase: '' });
   const frame = useCurrentFrame();
   const pose = { ...POSE, ...(settings.poses || {}) };
   return (
