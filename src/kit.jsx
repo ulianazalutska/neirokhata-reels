@@ -39,7 +39,7 @@ export const sp = (frame, start, config = { damping: 15, stiffness: 120, mass: 0
 export const lerp = (a, b, t) => a + (b - a) * t;
 export const clamp01 = (v) => Math.max(0, Math.min(1, v));
 export const r = (i, k) => random(`${k}-${i}`);
-export const ease = (frame, a, b) => interpolate(frame, [a, b], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.inOut(Easing.cubic) });
+export const ease = (frame, a, b) => interpolate(frame, [a, Math.max(b, a + 1)], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.inOut(Easing.cubic) });
 export const fmt = (n) => Math.round(n).toLocaleString('uk-UA').replace(/ /g, ' ');
 export const pressAt = (frame, at) => clamp01(1 - Math.abs(frame - at) / 4);
 
