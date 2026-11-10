@@ -9,6 +9,15 @@ import { TOTAL, FPS, S } from '../src/timeline.js';
 window.__NH_BASE__ = import.meta.env.BASE_URL;
 
 const KEY = 'nh_reel_settings';
+const REPO = 'ulianazalutska/neirokhata-reels';
+const API = 'https://api.github.com/repos/' + REPO;
+const token = () => { try { return localStorage.getItem('nh_token') || ''; } catch { return ''; } };
+async function gh(path, opts = {}) {
+  const r = await fetch(API + path, { ...opts, headers: { Accept: 'application/vnd.github+json', Authorization: 'Bearer ' + token(), ...(opts.body ? { 'Content-Type': 'application/json' } : {}) } });
+  if (!r.ok) throw new Error(r.status === 403 || r.status === 404 ? 'no-access' : 'HTTP ' + r.status);
+  return r.status === 204 ? null : r.json();
+}
+const when = (s) => new Date(s).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 const SCENE_NAMES = { hook: 'Хук', pain: 'Біль', solution: 'Рішення', show: 'Показ', bonus: 'Бонус', cta: 'Заклик' };
 const POSES = [
   ['shock', 'шок'], ['sigh', 'втома'], ['proud', 'гордий'], ['point', 'показує вгору'],
@@ -22,6 +31,77 @@ const EMPTY = { colors: {}, poses: {} };
 
 function load() {
   try { return { ...EMPTY, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch { return EMPTY; }
+}
+
+function Render({ st }) {
+  const [state, setState] = useState({ phase: 'idle' });
+  const [list, setList] = useState([]);
+  const timer = useRef(null);
+
+  const loadList = async () => {
+    if (!token()) return;
+    try {
+      const rel = await gh('/releases?per_page=6');
+      setList(rel.filter((r) => r.tag_name.startsWith('render-')).map((r) => ({ name: r.name, at: r.created_at, url: r.assets[0]?.browser_download_url })).filter((x) => x.url));
+    } catch {}
+  };
+  useEffect(() => { loadList(); return () => clearTimeout(timer.current); }, []);
+
+  const poll = async (since) => {
+    try {
+      const d = await gh('/actions/workflows/render.yml/runs?per_page=5&event=workflow_dispatch');
+      const run = d.workflow_runs.find((x) => new Date(x.created_at) >= since);
+      if (!run) { setState({ phase: 'queued' }); }
+      else if (run.status !== 'completed') { setState({ phase: 'running', run }); }
+      else if (run.conclusion === 'success') {
+        const rel = await gh('/releases/tags/render-' + run.run_number).catch(() => null);
+        setState({ phase: 'done', url: rel?.assets[0]?.browser_download_url, run });
+        loadList();
+        return;
+      } else { setState({ phase: 'failed', run }); return; }
+    } catch (e) { setState({ phase: 'error', msg: e.message }); return; }
+    timer.current = setTimeout(() => poll(since), 10000);
+  };
+
+  const start = async () => {
+    if (!token()) { setState({ phase: 'error', msg: 'no-token' }); return; }
+    const since = new Date(Date.now() - 5000);
+    setState({ phase: 'queued' });
+    try {
+      await gh('/actions/workflows/render.yml/dispatches', { method: 'POST', body: JSON.stringify({ ref: 'main', inputs: { settings: JSON.stringify(st) } }) });
+      timer.current = setTimeout(() => poll(since), 8000);
+    } catch (e) { setState({ phase: 'error', msg: e.message }); }
+  };
+
+  const busy = state.phase === 'queued' || state.phase === 'running';
+  const msg = {
+    idle: 'Монтаж іде на серверах GitHub з поточними налаштуваннями, приблизно 3–6 хвилин. Сторінку можна не закривати.',
+    queued: 'Запускаю монтаж…',
+    running: 'Монтую відео… Це займе кілька хвилин.',
+    done: 'Готово!',
+    failed: 'Монтаж не вдався. Подивись журнал запуску на GitHub.',
+    error: state.msg === 'no-token' ? 'Немає токена GitHub. Додай його в дашборді: вкладка «Налаштування».'
+      : state.msg === 'no-access' ? 'Токен не має доступу до репозиторію neirokhata-reels. Додай цей репозиторій у налаштуваннях токена на GitHub (Actions: Read and write, Contents: Read).'
+      : 'Помилка: ' + state.msg,
+  }[state.phase];
+
+  return (
+    <div className="card">
+      <h2>Монтаж у mp4</h2>
+      <div className="row2">
+        <button className="btn pri" onClick={start} disabled={busy}>{busy ? 'Монтую…' : 'Змонтувати mp4'}</button>
+        {state.phase === 'done' && state.url && <a className="btn" href={state.url}>Завантажити mp4</a>}
+        {(state.phase === 'failed' || state.phase === 'running') && state.run && <a className="btn" href={state.run.html_url} target="_blank" rel="noopener">Журнал на GitHub</a>}
+      </div>
+      <div className={'note' + (busy ? ' pulse' : '')}>{msg}</div>
+      {list.length > 0 && (
+        <>
+          <div className="sub" style={{ marginTop: 12 }}>Останні відео</div>
+          <ul className="renders">{list.map((x) => <li key={x.url}><span>{x.name}</span><span className="sub">{when(x.at)}</span><a href={x.url}>mp4</a></li>)}</ul>
+        </>
+      )}
+    </div>
+  );
 }
 
 function App() {
@@ -82,10 +162,11 @@ function App() {
           <div className="scenes">
             {SCENE_IDS.map((id) => <button key={id} className="btn" onClick={() => seek(id)}>{SCENE_NAMES[id]}</button>)}
           </div>
-          <div className="note">Рілс про MotionClone. Зміни видно одразу. Монтаж у mp4 з дашборду буде на наступному етапі.</div>
+          <div className="note">Рілс про MotionClone. Зміни видно одразу. Щоб отримати відео, натисни «Змонтувати mp4».</div>
         </div>
 
         <div>
+          <Render st={st} />
           <div className="card">
             <h2>Кольори</h2>
             <div className="grid">
